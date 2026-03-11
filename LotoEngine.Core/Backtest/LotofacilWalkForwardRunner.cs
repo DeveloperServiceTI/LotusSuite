@@ -2,6 +2,8 @@ using System.Text.Json;
 
 namespace LotoEngine.Core.Backtest;
 
+public sealed record LotoHistoricInfo(int ID, DateTime Data, HashSet<int> Numeros, bool isGanhadores15Acertos);
+
 /// <summary>
 /// Runner de walk-forward (janela 21) para Lotofácil usando histórico já carregado.
 /// </summary>

@@ -105,6 +105,83 @@ backtest.SetHandler((string gameRaw, string file, int back, int window, string s
 }, gameOpt, fileOpt, backOpt, windowOpt, startsOpt, outputOpt);
 root.AddCommand(backtest);
 
+var wfTicketCount = new Option<int>("--ticketCount", () => 6);
+var wfMinHits = new Option<int>("--minHits", () => 13);
+var wfMaxRetries = new Option<int>("--maxRetries", () => 2);
+var wfStartMode = new Option<string>("--startMode", () => "FromBeginning");
+var wfLastN = new Option<int?>("--lastN");
+var wfStartContestId = new Option<int?>("--startContestId");
+var wfPolicy = new Option<string>("--policy", () => "Retry");
+
+var walkForwardLotofacil = new Command("walkforward-lotofacil");
+walkForwardLotofacil.AddOption(fileOpt);
+walkForwardLotofacil.AddOption(outputOpt);
+walkForwardLotofacil.AddOption(windowOpt);
+walkForwardLotofacil.AddOption(wfTicketCount);
+walkForwardLotofacil.AddOption(wfMinHits);
+walkForwardLotofacil.AddOption(wfMaxRetries);
+walkForwardLotofacil.AddOption(wfStartMode);
+walkForwardLotofacil.AddOption(wfLastN);
+walkForwardLotofacil.AddOption(wfStartContestId);
+walkForwardLotofacil.AddOption(wfPolicy);
+walkForwardLotofacil.SetHandler((string file, string output, int window, int ticketCount, int minHits, int maxRetries, string startMode, int? lastN, int? startContestId, string policy) =>
+{
+    var def = new LotofacilDefinition();
+    var draws = new DrawFileReader().Read(file, def).OrderBy(d => d.ContestId).ToList();
+
+    var historico = draws
+        .Select(d => new LotoHistoricInfo(d.ContestId, d.Date, d.NumbersSorted.ToHashSet(), false))
+        .ToList();
+
+    var runner = new LotofacilWalkForwardRunner();
+    var start = Enum.Parse<LotofacilWalkForwardRunner.StartMode>(startMode, true);
+    var failPolicy = Enum.Parse<LotofacilWalkForwardRunner.FailPolicy>(policy, true);
+
+    var config = new LotofacilWalkForwardRunner.Config(
+        WindowSize: window,
+        TicketSize: 15,
+        MinHits: minHits,
+        MaxRetries: maxRetries,
+        Start: start,
+        LastN: lastN,
+        StartContestId: startContestId,
+        Policy: failPolicy,
+        ExportJsonPath: Path.Combine(output, "walkforward-lotofacil.json"));
+
+    IEnumerable<HashSet<int>> Generator(List<LotoHistoricInfo> treino, int ticketSize)
+    {
+        var last = treino.Last().Numeros;
+        var all = treino.SelectMany(t => t.Numeros)
+            .GroupBy(n => n)
+            .OrderByDescending(g => g.Count())
+            .ThenBy(g => g.Key)
+            .Select(g => g.Key)
+            .ToList();
+
+        var tickets = new List<HashSet<int>>();
+        for (var i = 0; i < ticketCount; i++)
+        {
+            var t = new HashSet<int>(last.Take(Math.Min(10, ticketSize)));
+            foreach (var n in all.Skip(i).Concat(all.Take(i)))
+            {
+                if (t.Count >= ticketSize) break;
+                t.Add(n);
+            }
+            while (t.Count < ticketSize)
+            {
+                var next = Enumerable.Range(1, 25).First(n => !t.Contains(n));
+                t.Add(next);
+            }
+            tickets.Add(t);
+        }
+        return tickets;
+    }
+
+    var run = runner.Run(historico, Generator, config);
+    Console.WriteLine($"WalkForward concluído. Rounds={run.TotalRounds} PassRate={run.PassRate:P2}");
+}, fileOpt, outputOpt, windowOpt, wfTicketCount, wfMinHits, wfMaxRetries, wfStartMode, wfLastN, wfStartContestId, wfPolicy);
+root.AddCommand(walkForwardLotofacil);
+
 return await root.InvokeAsync(args);
 
 static GameType ParseGame(string raw) => raw.ToLowerInvariant() switch

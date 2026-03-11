@@ -20,9 +20,12 @@ public sealed class RecipeAnalyzer
 
         var windows = BuildWindows(last21, innerWindow);
         var runs = last21.ToDictionary(x => x.ContestId, x => new RunsProfile(RunsCalculator.Analyze(x.NumbersSorted).MaxRun, RunsCalculator.Analyze(x.NumbersSorted).RunsGe3));
-        var targetMaxRun = (int)Math.Round(runs.Values.Select(x => x.MaxRun).OrderBy(x => x).Skip(runs.Count / 2).FirstOrDefault(), MidpointRounding.AwayFromZero);
-        var targetRuns = (int)Math.Round(runs.Values.Average(x => x.RunsGe3), MidpointRounding.AwayFromZero);
-        var dynamicAnchors = Math.Clamp((int)Math.Round(transitions.Select(t => t.RepeatCount).OrderBy(x => x).Skip(transitions.Count / 2).First(), MidpointRounding.AwayFromZero), 8, 12);
+        var medianMaxRun = runs.Values.Select(x => (double)x.MaxRun).OrderBy(x => x).Skip(runs.Count / 2).FirstOrDefault();
+        var targetMaxRun = (int)Math.Round(medianMaxRun, MidpointRounding.AwayFromZero);
+        var averageRuns = runs.Values.Average(x => (double)x.RunsGe3);
+        var targetRuns = (int)Math.Round(averageRuns, MidpointRounding.AwayFromZero);
+        var medianRepeats = transitions.Select(t => (double)t.RepeatCount).OrderBy(x => x).Skip(transitions.Count / 2).First();
+        var dynamicAnchors = Math.Clamp((int)Math.Round(medianRepeats, MidpointRounding.AwayFromZero), 8, 12);
 
         var lastDraw = last21.Last();
         var groupCounts = game.Groups.ToDictionary(g => g.Name, g => lastDraw.NumbersSorted.Count(n => n >= g.From && n <= g.To));

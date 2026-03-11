@@ -124,8 +124,19 @@ walkForwardLotofacil.AddOption(wfStartMode);
 walkForwardLotofacil.AddOption(wfLastN);
 walkForwardLotofacil.AddOption(wfStartContestId);
 walkForwardLotofacil.AddOption(wfPolicy);
-walkForwardLotofacil.SetHandler((string file, string output, int window, int ticketCount, int minHits, int maxRetries, string startMode, int? lastN, int? startContestId, string policy) =>
+walkForwardLotofacil.SetHandler(ctx =>
 {
+    var file = ctx.ParseResult.GetValueForOption(fileOpt)!;
+    var output = ctx.ParseResult.GetValueForOption(outputOpt)!;
+    var window = ctx.ParseResult.GetValueForOption(windowOpt);
+    var ticketCount = ctx.ParseResult.GetValueForOption(wfTicketCount);
+    var minHits = ctx.ParseResult.GetValueForOption(wfMinHits);
+    var maxRetries = ctx.ParseResult.GetValueForOption(wfMaxRetries);
+    var startMode = ctx.ParseResult.GetValueForOption(wfStartMode)!;
+    var lastN = ctx.ParseResult.GetValueForOption(wfLastN);
+    var startContestId = ctx.ParseResult.GetValueForOption(wfStartContestId);
+    var policy = ctx.ParseResult.GetValueForOption(wfPolicy)!;
+
     var def = new LotofacilDefinition();
     var draws = new DrawFileReader().Read(file, def).OrderBy(d => d.ContestId).ToList();
 
@@ -179,7 +190,7 @@ walkForwardLotofacil.SetHandler((string file, string output, int window, int tic
 
     var run = runner.Run(historico, Generator, config);
     Console.WriteLine($"WalkForward concluído. Rounds={run.TotalRounds} PassRate={run.PassRate:P2}");
-}, fileOpt, outputOpt, windowOpt, wfTicketCount, wfMinHits, wfMaxRetries, wfStartMode, wfLastN, wfStartContestId, wfPolicy);
+});
 root.AddCommand(walkForwardLotofacil);
 
 return await root.InvokeAsync(args);

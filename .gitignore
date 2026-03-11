@@ -17,3 +17,6 @@
 /LotoEngine.Tests/bin/Debug/net8.0
 /LotoEngine.Tests/obj/Debug/net8.0
 /LotoEngine.Tests/obj
+/.vs/LotoEngine
+/LotoEngine.Core/bin/Debug/net8.0
+/LotoEngine.Infrastructure/bin/Debug/net8.0

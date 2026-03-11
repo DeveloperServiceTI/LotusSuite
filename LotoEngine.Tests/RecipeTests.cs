@@ -3,6 +3,7 @@ using LotoEngine.Core.Analysis;
 using LotoEngine.Core.Domain;
 using LotoEngine.Core.Games;
 using LotoEngine.Core.Utils;
+using Xunit;
 
 namespace LotoEngine.Tests;
 

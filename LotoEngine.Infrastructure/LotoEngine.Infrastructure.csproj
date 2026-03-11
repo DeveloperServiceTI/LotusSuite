@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../LotoEngine.Core/LotoEngine.Core.csproj" />
+    <PackageReference Include="ClosedXML" Version="0.103.0" />
+  </ItemGroup>
+</Project>

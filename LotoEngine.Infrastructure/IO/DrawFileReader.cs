@@ -25,14 +25,22 @@ public sealed class DrawFileReader
     {
         using var wb = new XLWorkbook(file);
         var ws = wb.Worksheet(1);
-        var rows = ws.RangeUsed().RowsUsed().Skip(1);
+        //var rows = ws.RangeUsed().RowsUsed().Skip(1);
+        var rows = ws.RangeUsed().RowsUsed();
         return rows.Select(r =>
         {
             var contest = r.Cell(1).GetValue<int>();
-            var date = r.Cell(2).GetDateTime();
+            var dateStr = r.Cell(2).GetString();
+            if (!DateTime.TryParse(dateStr, out var date))
+                throw new FormatException($"Data inválida na célula: '{dateStr}'");
             var nums = Enumerable.Range(0, game.NumbersPerTicket).Select(i => r.Cell(3 + i).GetValue<int>()).OrderBy(x => x).ToArray();
             var extra = game.HasExtra ? r.Cell(3 + game.NumbersPerTicket).GetString() : null;
             return new Draw(contest, date, nums, extra);
+            //var contest = r.Cell(1).GetValue<int>();
+            //var date = r.Cell(2).GetDateTime();
+            //var nums = Enumerable.Range(0, game.NumbersPerTicket).Select(i => r.Cell(3 + i).GetValue<int>()).OrderBy(x => x).ToArray();
+            //var extra = game.HasExtra ? r.Cell(3 + game.NumbersPerTicket).GetString() : null;
+            //return new Draw(contest, date, nums, extra);
         }).ToList();
     }
 }

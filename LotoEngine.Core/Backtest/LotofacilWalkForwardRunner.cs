@@ -27,7 +27,7 @@ public sealed class LotofacilWalkForwardRunner
         int WindowSize = 21,
         int TicketSize = 15,
         int MinHits = 13,
-        int MaxRetries = 2,
+        int MaxRetries = 200,
         StartMode Start = StartMode.FromBeginning,
         int? LastN = null,
         int? StartContestId = null,
@@ -136,7 +136,8 @@ public sealed class LotofacilWalkForwardRunner
                 TargetDate: alvo.Data,
                 TicketEvaluations: evals,
                 BestHits: Math.Max(bestHits, 0),
-                BestTicket: bestTicket,
+                //BestTicket: bestTicket,
+                BestTicket: bestTicket is not null ? new HashSet<int>(bestTicket.OrderBy(x => x)) : null,
                 Passed: passed,
                 Attempts: attempt,
                 IsWinner15AcertosTarget: alvo.isGanhadores15Acertos));

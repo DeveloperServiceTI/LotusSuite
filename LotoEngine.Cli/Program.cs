@@ -8,16 +8,38 @@ using LotoEngine.Core.Generation;
 using LotoEngine.Core.Validation;
 using LotoEngine.Infrastructure.IO;
 using LotoEngine.Infrastructure.Reports;
+using System.IO;
+using System.Diagnostics;
+using System.Linq;
+
+string GetDefaultDownloadsFile()
+{
+    try
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrWhiteSpace(userProfile))
+        {
+            var downloads = Path.Combine(userProfile, "Downloads");
+            if (Directory.Exists(downloads))
+                return Path.Combine(downloads, "Lotofácil.xlsx");
+        }
+    }
+    catch
+    {
+        // ignore and fallback        
+    }
+    return "";
+}
 
 var gameOpt = new Option<string>("--game", () => "lotofacil");
-var fileOpt = new Option<string>("--file") { IsRequired = true };
+var fileOpt = new Option<string>("--file", () => GetDefaultDownloadsFile());
 var lastOpt = new Option<int>("--last", () => 21);
 var countOpt = new Option<int>("--count", () => 21);
 var modeOpt = new Option<string>("--mode", () => "normal");
 var startMinOpt = new Option<int?>("--startMin");
 var ticketsOpt = new Option<string>("--tickets", () => "output/tickets.json");
 var resultOpt = new Option<string>("--result") { IsRequired = true };
-var backOpt = new Option<int>("--back", () => 210);
+var backOpt = new Option<int>("--back", () => 7);
 var windowOpt = new Option<int>("--window", () => 21);
 var startsOpt = new Option<string>("--starts", () => "1,2,3");
 var outputOpt = new Option<string>("--output", () => "output");
@@ -107,7 +129,7 @@ root.AddCommand(backtest);
 
 var wfTicketCount = new Option<int>("--ticketCount", () => 6);
 var wfMinHits = new Option<int>("--minHits", () => 13);
-var wfMaxRetries = new Option<int>("--maxRetries", () => 2);
+var wfMaxRetries = new Option<int>("--maxRetries", () => 7);
 var wfStartMode = new Option<string>("--startMode", () => "FromBeginning");
 var wfLastN = new Option<int?>("--lastN");
 var wfStartContestId = new Option<int?>("--startContestId");
@@ -126,6 +148,10 @@ walkForwardLotofacil.AddOption(wfStartContestId);
 walkForwardLotofacil.AddOption(wfPolicy);
 walkForwardLotofacil.SetHandler(ctx =>
 {
+    // Detecta se a opção foi explicitamente fornecida (verifica tokens do parse)
+    var fileProvided = ctx.ParseResult.Tokens.Any(t => t.Value.StartsWith("--file", StringComparison.Ordinal));
+
+    // Obtém valor (pode ser default do Option ou valor passado pelo usuário/VS)
     var file = ctx.ParseResult.GetValueForOption(fileOpt)!;
     var output = ctx.ParseResult.GetValueForOption(outputOpt)!;
     var window = ctx.ParseResult.GetValueForOption(windowOpt);
@@ -136,6 +162,23 @@ walkForwardLotofacil.SetHandler(ctx =>
     var lastN = ctx.ParseResult.GetValueForOption(wfLastN);
     var startContestId = ctx.ParseResult.GetValueForOption(wfStartContestId);
     var policy = ctx.ParseResult.GetValueForOption(wfPolicy)!;
+
+    // Se estiver em debug, força uso do arquivo padrão (Downloads).
+    if (Debugger.IsAttached)
+    {
+        var defaultFile = GetDefaultDownloadsFile();
+        if (!string.IsNullOrEmpty(defaultFile))
+        {
+            Console.WriteLine($"Debugger anexado — usando arquivo padrão: {defaultFile}");
+            file = defaultFile;
+        }
+        else
+        {
+            Console.WriteLine("Debugger anexado — arquivo padrão não encontrado, mantendo valor fornecido.");
+        }
+    }
+
+    Console.WriteLine($"Usando arquivo: {file} (fornecido? {fileProvided})");
 
     var def = new LotofacilDefinition();
     var draws = new DrawFileReader().Read(file, def).OrderBy(d => d.ContestId).ToList();
@@ -161,6 +204,13 @@ walkForwardLotofacil.SetHandler(ctx =>
 
     IEnumerable<HashSet<int>> Generator(List<LotoHistoricInfo> treino, int ticketSize)
     {
+        Console.WriteLine($"Generator chamado. Treino.Count={(treino?.Count ?? 0)}, ticketSize={ticketSize}, ticketCount={ticketCount}");
+        if (treino == null || treino.Count == 0)
+        {
+            Console.WriteLine("Treino vazio - retornando sequência vazia.");
+            yield break;
+        }
+
         var last = treino.Last().Numeros;
         var all = treino.SelectMany(t => t.Numeros)
             .GroupBy(n => n)
@@ -169,7 +219,6 @@ walkForwardLotofacil.SetHandler(ctx =>
             .Select(g => g.Key)
             .ToList();
 
-        var tickets = new List<HashSet<int>>();
         for (var i = 0; i < ticketCount; i++)
         {
             var t = new HashSet<int>(last.Take(Math.Min(10, ticketSize)));
@@ -183,11 +232,15 @@ walkForwardLotofacil.SetHandler(ctx =>
                 var next = Enumerable.Range(1, 25).First(n => !t.Contains(n));
                 t.Add(next);
             }
-            tickets.Add(t);
+            Console.WriteLine($"Generator: criado ticket #{i + 1} com {t.Count} dezenas (amostra: {string.Join(',', t.Take(5))})");
+            yield return t;
         }
-        return tickets;
     }
-
+    Console.WriteLine($"historico.Count={historico.Count} WindowSize={config.WindowSize} StartMode={start} LastN={lastN} StartContestId={startContestId}");
+    if (historico.Count <= config.WindowSize)
+    {
+        Console.WriteLine("ATENÇÃO: historico muito curto para executar qualquer round ( precisa de WindowSize+1 entradas ).");
+    }
     var run = runner.Run(historico, Generator, config);
     Console.WriteLine($"WalkForward concluído. Rounds={run.TotalRounds} PassRate={run.PassRate:P2}");
 });

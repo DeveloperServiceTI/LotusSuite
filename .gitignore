@@ -21,3 +21,6 @@
 /LotoEngine.Core/bin/Debug/net8.0
 /LotoEngine.Infrastructure/bin/Debug/net8.0
 /LotoEngine.Cli/bin/Debug/net8.0
+/.vs/ProjectEvaluation
+/.vs/VSWorkspaceState.json
+/LotoEngine.Cli/Properties/launchSettings.json
